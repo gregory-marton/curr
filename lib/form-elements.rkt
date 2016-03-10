@@ -88,6 +88,7 @@
          ;; lesson formatting 
          lesson
          lesson/studteach
+         lesson/csp
          pacing
          points
          point
@@ -563,6 +564,84 @@
                    )))
         ))))))
   
+(define (lesson/csp
+         #:title (title #f)
+         #:duration (duration #f)
+         #:overview (overview "")
+         #:prerequisites (prerequisites #f)
+         #:learning-objectives (learning-objectives #f)
+         #:evidence-statements (evidence-statements #f)
+         #:enduring-understanding (enduring-understanding #f)
+         #:essential-questions (essential-questions #f)
+         #:product-outcomes (product-outcomes #f)
+         #:standards (standards '())
+         #:materials (materials #f)
+         #:preparation (preparation #f)
+         #:exercises (exercise-locs '())
+         #:intro (intro #f)
+         #:closing (closing #f)
+         ;#:video (video #f)
+         ;#:pacings (pacings #f)
+         . body)
+  
+  (define the-lesson-name 
+    (or (current-lesson-name) 
+        (symbol->string (gensym (string->symbol (or title 'lesson))))))
+  
+  (traverse-block
+   (lambda (get set!)
+     (define anchor (lesson-name->anchor-name the-lesson-name))
+     ;(set! 'vocab-used '()) ; reset vocabulary list for each lesson
+     ; next line for migration to new standards generation
+     (set! 'standard-names (remove-duplicates (append standards (get 'standard-names '()))))
+     (set! 'exercise-locs (append (get 'exercise-locs '()) exercise-locs))
+     (set! 'bootstrap-lessons (cons (lesson-struct title
+                                                   duration
+                                                   anchor)
+                                    (get 'bootstrap-lessons '())))     
+     (nested #:style "LessonBoundary"
+      (para #:style bs-page-title-style title)
+      "\n" "\n"
+      (nested-flow 
+       bs-content-style
+       (list
+        (nested #:style (bootstrap-sectioning-style "overview")
+                (interleave-parbreaks/all
+                 (list
+                  (nested #:style bs-logo-style (image logo.png "bootstrap logo"))
+                  ;; agenda would insert here
+                  (nested #:style bs-lesson-title-style
+                          (nested #:style bs-lesson-name-style "Overview"))
+                  overview
+                  (lesson-section "Learning Objectives" learning-objectives)
+                  (lesson-section "Evidence Statements" evidence-statements)
+                  (lesson-section "Product Outcomes" product-outcomes)
+                  ; commented out to suppress warnings that aren't relevant with unit-level generation
+                  ;(lesson-section "Standards" (expand-standards standards))
+                  (lesson-section "Materials" materials)
+                  (lesson-section "Preparation" preparation)
+                  ;; look at unit-level glossary generation to build lesson-level glossary
+                  ;(lesson-section "Glossary" (glossary get))
+                  )))
+        (nested #:style (bootstrap-div-style "segment")
+                (interleave-parbreaks/all
+                 (append
+                  (list
+                   (elem #:style (style #f (list (url-anchor anchor) (make-alt-tag "span"))))
+                   (nested #:style bs-lesson-title-style
+                           (interleave-parbreaks/all
+                            (cons (para #:style bs-lesson-name-style 
+                                        (interleave-parbreaks/all
+                                         (list (elem title) 
+                                               (cond [duration
+                                                      (elem #:style bs-time-style (format "(Time ~a)" duration))]
+                                                     [else (elem)]))))
+                                  (list (elem)))))) ;pacings))) -- reinclude later if desired
+                   body
+                   ;(list (insert-toggle-buttons))
+                   )))
+        ))))))
+
 ;; contents either an itemization or a traverse block
 (define (lesson-section title contents)
   (traverse-block 
